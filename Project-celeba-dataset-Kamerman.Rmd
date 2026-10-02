@@ -1,0 +1,410 @@
+---
+title: "Project Celeb Face Attributes"
+author: "Kamerman"
+date: "11/11/2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 5
+---
+
+
+
+# Introduction to data
+
+One step in Data Analysis is to summarize and describe the raw information. This case, we are going the gain insight in a face recognition data base. In the data set it has overall 202,599 number of face images of various celebrities. On top of that has a raw amount of 10,177 unique identities, but names aren't specified. Per each image there are 40 binary attributes and 5 landmark locations. The output is to try to find out who are the most attractive people are based on location, attributes,and size. The celeba-dataset website (https://www.kaggle.com/jessicali9530/celeba-dataset) has a couple of data files plus more details on the aspects of the study.
+
+```{r, echo=FALSE, fig.cap="Famous People", out.width = '75%',fig.align = 'center'}
+knitr::include_graphics("Famous People.PNG")
+```
+
+
+
+# Questions
+What is the ratio of attractive people base on there attributes?
+
+Based on their size find the ratio of attractive famus people?
+
+How many attractive people are there based on their partition?
+
+Based on the varible landmark what is the ratio of attractive people? 
+
+# Packages 
+
+```{r}
+library(ggplot2)
+library(corrplot)
+library(readr)
+library(car)
+```
+
+
+# Reading the Data
+
+```{r}
+attr<- read.csv("list_attr_celeba.csv")
+bbox<- read.csv("list_bbox_celeba.csv")
+eval<- read.csv("list_eval_partition.csv")
+landmarks<- read.csv("list_landmarks_align_celeba.csv")
+```
+
+# Data exploration 
+
+## Data for the attr file
+
+```{r}
+object.size(attr)
+```
+
+
+```{r}
+nrow(attr)
+ncol(attr)
+class(attr)
+```
+
+
+The first file of the data set is the attr file. What is the way you organize your data show you can see the exact amount of attributes each of the people in the photos have?
+
+```{r}
+attr_all<-attr
+attr_all[attr_all==-1]<-0
+attr_all<- attr_all[sample(nrow(attr_all)),]
+summary(attr_all)
+```
+
+Based on the information in the attr file there are about 202,599 people with there specific attributes. How do you narrow down the amount of people to rule out the people with non- attractive qualities?
+
+```{r}
+attr_train<- attr_all[1:1000,]
+attr_train[1:5,]
+```
+
+The next step is to take a test sample of people from the whole stack. Now how from the attr file can you take a sample of half of the people?
+
+```{r}
+attr_test<- attr_all[10001: nrow(attr_all),]
+attr_test[1:5,]
+```
+
+From the sample that got taken out how do you find the top five most attractive people based on their attributes?
+
+```{r}
+attr_test_small<- attr_test[sample(nrow(attr_test),5),]
+attr_test_small
+```
+
+
+## Visualizations of Attributes
+
+Based on the two varibles in the data set called attr_train. How do you make a pie chart with the two varibles Male and Attractive?
+
+```{r}
+pie(table(attr_train$Male,attr_train$Attractive),labels =c("c1","c2","c3","c4"),col = c("blue","red","pink","white"), main = "Attributes")
+```
+
+How do you organize the data into three varibles?
+
+```{r}
+f1<- Attractive~.
+f2<- Attractive~ Bangs+Big_Nose+Blurry+Bushy_Eyebrows+Eyeglasses+Heavy_Makeup+Pointy_Nose+Receding_Hairline+Smiling+Wearing_Earrings+Wearing_Hat+Wearing_Lipstick+Young
+f3<- Attractive~ Big_Nose+Blurry+Eyeglasses+Heavy_Makeup+Pointy_Nose+Receding_Hairline+Smiling+Wearing_Hat+Young
+```
+
+
+What is the methode of puting the three varibles into another  varible?
+
+```{r}
+formulas<- list("f1", "f2", "f3")
+formulas
+```
+
+
+```{r}
+for (n in formulas) {
+  logit1<-glm(f1,data = attr_train[2:41], family = "binomial")
+summary(logit1)
+p1<-predict.glm(logit1,attr_test_small[2:41], type="response")
+
+
+
+p1<-as.data.frame(p1)
+check<-cbind(as.data.frame(p1),attr_test_small$Attractive)
+check$pred<-round(check$p1)
+check$correct<-check$`attr_test_small$Attractive`+check$pred
+check$correct<-as.factor(check$correct)
+s1<-summary(check$correct)
+print("The percentage of correct predictions:")
+print (((s1[2]+s1[1]))/nrow(check)*100)
+}
+```
+
+
+## Data for the bbox file
+
+```{r}
+object.size(bbox)
+```
+
+
+```{r}
+nrow(bbox)
+ncol(bbox)
+class(bbox)
+```
+
+
+
+The second file of data is the bbox data. What is the way you organize your data so you change the order?
+
+```{r}
+bbox_all<- bbox
+bbox_all<- bbox_all[sample(nrow(bbox_all)),]
+summary(bbox_all)
+```
+
+How do you select a certain number people in the bbox data file?
+
+```{r}
+bbox_train<- bbox_all[1:1000,]
+bbox_train[1:5,]
+```
+
+Next is to take a sample of half of those people in the bbox file, how do you do that?
+
+```{r}
+bbox_test<- bbox_all[10001: nrow(bbox_all),]
+bbox_test[1:5,]
+```
+
+From the sample that got taken out how do you find the top five most attractive people based on their width and height?
+
+```{r}
+bbox_test_small<- bbox_test[sample(nrow(bbox_test),5),]
+bbox_test_small
+```
+
+
+## Visualizations based on Height
+
+Based on the data in bbox_train, How do you make a bar graph based on the varible height?
+
+```{r}
+barplot(bbox_train$height, main = "bbox data", xlab = "height", ylab="y_1")
+```
+
+What is the way to organize the varibles in the bbox data file?
+
+```{r}
+v1<- height~.
+v2<-height~x_1+y_1+width
+```
+
+The most important part is, how do you set the two varibles you made into the varible formulas?
+
+```{r}
+formulas<- list("v1", "v2")
+formulas
+```
+
+
+```{r}
+for (n in formulas) {
+  logit1<-glm(v1,data = bbox_train[2:5])
+summary(logit1)
+p1<-predict.glm(logit1,bbox_test_small[2:5], type="response")
+
+
+
+p1<-as.data.frame(p1)
+check<-cbind(as.data.frame(p1),bbox_test_small$height)
+check$pred<-round(check$p1)
+check$correct<-check$`bbox_test_small$height`+check$pred
+check$correct<-as.factor(check$correct)
+c1<-summary(check$correct)
+print("The percentage of correct predictions:")
+print (((s1[2]+s1[1]))/nrow(check)*100)
+}
+```
+
+## Data for the eval file
+
+```{r}
+object.size(eval)
+```
+
+
+```{r}
+nrow(eval)
+ncol(eval)
+class(eval)
+```
+
+
+This is the third file of data called eval data. What is the way to shuffle and oranize the data?
+
+```{r}
+eval_all<-eval
+eval_all<- eval_all[sample(nrow(eval_all)),]
+summary(eval_all)
+```
+
+how do you control the amount of variables and observations in the data eval_train?
+
+```{r}
+eval_train<- eval_all[1:1000,]
+eval_train[1:5,]
+```
+
+What is another way of narrowing down the data?
+
+```{r}
+eval_test<- eval_all[10001: nrow(eval_all),]
+eval_test[1:5,]
+```
+
+Now that you got the narrowed down data stored in the eval_test, how do narrow it down to the top 5 attractive people?
+
+```{r}
+eval_test_small<- eval_test[sample(nrow(eval_test),5),]
+eval_test_small
+```
+
+
+## Visualizations of based on partition
+
+What is way to make a histogram from the eval_train data pertaining to the partition varible?
+
+```{r}
+hist(eval_train$partition, col = "blue")
+```
+
+What is the way to store data into a varible?
+
+```{r}
+f1<- partition~.
+```
+
+How do you the varible you made into the varible called formulas?
+
+```{r}
+formulas<- list("f1")
+formulas
+```
+
+
+```{r}
+for (n in formulas) {
+  logit1<-glm(f1,data = eval_train[1:2])
+  summary(logit1)
+p1<-predict.glm(logit1,eval_train[1:2], type="response")
+
+
+
+p1<-as.data.frame(p1)
+check<-cbind(as.data.frame(p1),eval_test_small$partition)
+check$pred<-round(check$p1)
+check$correct<-check$`eval_test_small$partition`+check$pred
+check$correct<-as.factor(check$correct)
+c1<-summary(check$correct)
+print("The percentage of correct predictions:")
+print (((c1[2]+c1[1]))/nrow(check)*100)
+}
+```
+
+
+## Data for the Landmark file
+
+```{r}
+object.size(landmarks)
+```
+
+```{r}
+nrow(landmarks)
+ncol(landmarks)
+class(landmarks)
+```
+
+
+The fourth file shows data from 5 different landmark locations across the world through the file called landmarks, how do you organize this data?
+
+```{r}
+landmarks_all<-landmarks
+landmarks_all<- landmarks_all[sample(nrow(landmarks_all)),]
+summary(landmarks_all)
+```
+
+How do you control the bonds so you would only see a certain set of people?
+
+```{r}
+landmarks_train<- landmarks_all[1:1000,]
+landmarks_train[1:5,]
+```
+
+What is another way of zeroing in on people from some of the landmarks?
+
+```{r}
+landmarks_test<- landmarks_all[10001: nrow(landmarks_all),]
+landmarks_test[1:5,]
+```
+
+What do you do to get the top 5 most attractive people based on there location?
+
+```{r}
+landmarks_test_small<- landmarks_test[sample(nrow(landmarks_test),5),]
+landmarks_test_small
+```
+
+
+## Visualizations based on peoples facal features 
+
+Instead of doing a traditional type of graph, how do you make a corrplot of the data from landmarks_train with the varibles lefteye_x and lefteye_y? 
+
+```{r}
+d1<- cor.test(landmarks_train$lefteye_x, landmarks_train$lefteye_y)
+d2<- cor(landmarks_train[2:ncol(landmarks_train)])
+corrplot(d2, method = "color")
+```
+
+How do you organize the data in to two varibles?
+
+```{r}
+list1<- lefteye_x~.
+list2<- lefteye_x~ lefteye_y+ righteye_x+ righteye_y+ nose_x+ nose_y+ leftmouth_x+ leftmouth_y+ rightmouth_x+ rightmouth_y
+```
+
+How do you stuff the two varibles into the varible formulas?
+
+```{r}
+formulas<- list("list 1", "list 2")
+formulas
+```
+
+
+```{r}
+for (n in formulas) {
+  logit1<-glm(list1,data = landmarks_train[2:11])
+summary(logit1)
+p1<-predict.glm(logit1,landmarks_test_small[2:11], type="response")
+
+
+
+p1<-as.data.frame(p1)
+check<-cbind(as.data.frame(p1),landmarks_test_small$lefteye_x)
+check$pred<-round(check$p1)
+check$correct<-check$`landmarks_test_small$lefteye_x`+check$pred
+check$correct<-as.factor(check$correct)
+c1<-summary(check$correct)
+print("The percentage of correct predictions:")
+print (((s1[2]+s1[1]))/nrow(check)*100)
+}
+```
+
+
+# Conclusion 
+
+Now that we saw the Data in the four varibles and narrow it down step by step to see the amount of people that are atractive. Based on the data we can conclude that there are four different ways of being able to tell who is the most attractive like through the varibles of landmarks, eval, bbox, and attr. Plus through this new facial recgnition program you end up calculating the ratio of attractive people based on all of their unique facial characteristics.   
+
+# Statement 
+
+My R contributions to this project is about 80%.
